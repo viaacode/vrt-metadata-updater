@@ -1,0 +1,5 @@
+# The host that will be used to perform the REST-calls against
+environment:
+    host:
+# Input file containing media IDs to be processed 1 id per line
+input_file:
