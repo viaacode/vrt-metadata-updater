@@ -53,4 +53,3 @@ env/
 config.yml
 ids.txt
 .vscode/
-__pycache__/
