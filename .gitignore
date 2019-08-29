@@ -52,3 +52,4 @@ env/
 #config
 config.yml
 ids.txt
+.vscode/

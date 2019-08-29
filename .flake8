@@ -1,5 +1,16 @@
 [flake8]
-ignore = E203, E266, E501, W503, F403, F401
-max-line-length = 79
-max-complexity = 18
-select = B,C,E,F,W,T4,B9
+# Some sane defaults for the code style checker flake8
+exclude =
+    .tox
+    build
+    dist
+    .eggs
+    docs/conf.py
+max-line-length = 88 
+ignore =
+    # Whitespace before ':'
+    E203
+    # Whitepsace at end of line
+    W291
+    # Line break before logical
+    W503

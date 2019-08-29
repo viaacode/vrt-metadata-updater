@@ -1,5 +1,10 @@
-# The host that will be used to perform the REST-calls against
 environment:
-    host:
+    vrt_request_api:
+        host: 
+    mediahaven: 
+        host: 
+        username: 
+        password: 
 # Input file containing media IDs to be processed 1 id per line
-input_file:
+media_id_list: ./ids.txt
+media_type: audio

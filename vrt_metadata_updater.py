@@ -5,6 +5,7 @@ Created on: 2019-08-22 10:47:21
 """
 
 import functools
+import json
 import logging
 import sys
 import time
@@ -14,13 +15,8 @@ import structlog
 import yaml
 from requests.auth import HTTPBasicAuth
 
-# CONSTANTS
-nr_of_results = 10
-
 # logger configuration
-logging.basicConfig(
-    format="%(message)s", level=logging.INFO, stream=sys.stdout
-)
+logging.basicConfig(format="%(message)s", level=logging.INFO, stream=sys.stdout)
 
 structlog.configure(
     processors=[
@@ -66,17 +62,6 @@ def authenticate(func):
     return wrapper_authenticate
 
 
-def slow_down(func):
-    """Sleep 1 second before calling the function"""
-
-    @functools.wraps(func)
-    def wrapper_slow_down(*args, **kwargs):
-        time.sleep(1)
-        return func(*args, **kwargs)
-
-    return wrapper_slow_down
-
-
 def get_token():
     user = cfg["environment"]["mediahaven"]["username"]
     password = cfg["environment"]["mediahaven"]["password"]
@@ -90,90 +75,116 @@ def get_token():
     )
 
     try:
+        if r.status_code != 201:
+            raise ConnectionError(f"Failed get a token. Status: {r.status_code}")
         rtoken = r.json()["access_token"]
         token = "Bearer " + rtoken
     except Exception as e:
-        out = {
-            "ERROR": str(e),
-            "status code": r.status_code,
-            "request body": str(r.text),
-        }
-        print(out)
+        log.critical(str(e))
         return None
     return token
 
 
 @authenticate
 def get_fragments(offset=0):
+    """gets 100 fragments at a time for a configured media type
+
+    Keyword Arguments:
+        offset {int} -- offset for paging (default: {0})
+
+    Returns:
+        Dict -- contains the fragments and the total number of results
+    """
     url = (
         cfg["environment"]["mediahaven"]["host"]
-        + f'/media/?q=%2b(type_viaa:"{cfg["media_type"]}")&startIndex={offset}&nrOfResults={nr_of_results}'
+        + f'/media/?q=%2b(type_viaa:"{cfg["media_type"]}")\
+        &startIndex={offset}&nrOfResults=100'
     )
-    headers = {
-        "Authorization": token,
-        "Accept": "application/vnd.mediahaven.v2+json",
-    }
-    response = requests.request("GET", url=url, headers=headers)
+    headers = {"Authorization": token, "Accept": "application/vnd.mediahaven.v2+json"}
+    response = requests.get(url, headers=headers)
 
     media_data_list = response.json()
 
     return media_data_list
 
 
-@slow_down
+def write_media_ids_to_file(media_ids):
+    """appends each media id as a new line to the configured file
+
+    Arguments:
+        media_ids {List[str]} -- list of media ids to be added
+    """
+    with open(cfg["media_id_list"], "a+") as f:
+        for media_id in media_ids:
+            f.write(f"{media_id}\n")
+            log.info(
+                "vrt media id written to file",
+                vrt_media_id=media_id,
+                file_name=cfg["media_id_list"],
+            )
+
+
 def request_metadata_update(media_id):
-    """sends a request to update the metadata to the configured host. No more than 1 request/second
+    """sends a request to update the metadata to the configured host. 
 
     Arguments:
         media_id {str} -- the VRT Media ID to be updated
     """
-
-    log.info("processing", media_id=media_id)
-
     payload = {
         "media_id": media_id,
         "media_type": "metadata",
         "destination": "mediahaven",
     }
 
-    response = requests.post(
-        cfg["environment"]["vrt_request_api"]["host"], data=payload
+    log.info(
+        "creating vrt metadata update request",
+        vrt_media_id=media_id,
+        request=payload,
     )
 
-    if response.status_code == 200:
+    response = requests.post(
+        cfg["environment"]["vrt_request_api"]["host"], data=json.dumps(payload)
+    )
+
+    if response.status_code == 200 and response.json()["status"] == "OK":
         log.info(
-            "processed", media_id=media_id, status_code=response.status_code
+            "vrt metadata update request successful",
+            vrt_media_id=media_id,
+            status_code=response.status_code,
         )
     else:
-        log.error("error", media_id=media_id, status_code=response.status_code)
-        # TODO: handle failure of the request
-        pass
+        log.critical(
+            "vrt metadata update request failed",
+            vrt_media_id=media_id,
+            status_code=response.status_code,
+        )
 
 
 def main():
+    # mediahaven call so we can get total number of results
     media_data = get_fragments()
 
     number_of_media_ids = 0
     total_number_of_results = media_data["TotalNrOfResults"]
 
+    # keep calling the mediahaven-api until all results are received
     while number_of_media_ids < total_number_of_results:
+        # map items to their vrt media id
         media_ids = list(
             map(
                 lambda x: x["Dynamic"]["dc_identifier_cpid"],
                 media_data["MediaDataList"],
             )
         )
-        with open(cfg["media_id_list"], "a+") as f:
-            for media_id in media_ids:
-                f.write(f"{media_id}\n")
+        write_media_ids_to_file(media_ids)
         number_of_media_ids += len(media_ids)
         media_data = get_fragments(offset=number_of_media_ids)
 
     # open file containing ids to be processed
     with open(cfg["media_id_list"]) as f:
-        # read each line until no more lines left
         for media_id in f:
             request_metadata_update(media_id.strip())
+            time.sleep(1)
 
 
 if __name__ == "__main__":
