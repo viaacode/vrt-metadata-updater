@@ -53,3 +53,4 @@ env/
 config.yml
 ids.txt
 .vscode/
+database.db

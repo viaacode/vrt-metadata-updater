@@ -5,6 +5,4 @@ environment:
         host: 
         username: 
         password: 
-# Input file containing media IDs to be processed 1 id per line
-media_id_list: ./ids.txt
 media_type: audio
