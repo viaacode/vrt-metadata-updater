@@ -1,5 +1,5 @@
 from flask import Flask
-from database import db_session, init_db
+from database import db_session
 import vrt_metadata_updater
 
 app = Flask(__name__)
@@ -7,13 +7,7 @@ app = Flask(__name__)
 
 @app.route("/start", methods=["POST"])
 def start():
-    vrt_metadata_updater.start()
-    return "started"
-
-
-@app.route("/stop", methods=["POST"])
-def stop():
-    return vrt_metadata_updater.stop()
+    return vrt_metadata_updater.start()
 
 
 @app.route("/progress")
@@ -27,5 +21,4 @@ def shutdown_session(exception=None):
 
 
 if __name__ == '__main__':
-    init_db()
-    app.run(debug=True) 
+    app.run(host="0.0.0.0", debug=True) 

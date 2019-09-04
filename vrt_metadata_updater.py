@@ -16,7 +16,7 @@ import structlog
 import yaml
 from requests.auth import HTTPBasicAuth
 
-from database import db_session, init_db
+from database import db_session
 from models import MediaObject
 
 # logger configuration
@@ -116,6 +116,11 @@ def get_fragments(offset=0):
 
 
 def write_media_objects_to_db(media_objects):
+    """Add the media_objects to the database if they don't exist, otherwise ignore them
+
+    Arguments:
+        media_objects {List} -- objects containing the vrt_media_id
+    """
     for media_object in media_objects:
         obj = (
             db_session.query(MediaObject)
@@ -150,6 +155,9 @@ def request_metadata_update(media_id):
 
     Arguments:
         media_id {str} -- the VRT Media ID to be updated
+
+    Returns:
+        bool -- True if the call was succesful, False if failed
     """
     payload = {
         "media_id": media_id,
@@ -182,13 +190,24 @@ def request_metadata_update(media_id):
 
 
 def get_progress():
-    amount_in_status_0 = db_session.query(MediaObject).filter(MediaObject.status == 0).count()
-    amount_in_status_1 = db_session.query(MediaObject).filter(MediaObject.status == 1).count()
-    amount_in_status_2 = db_session.query(MediaObject).filter(MediaObject.status == 2).count()
+    """0 = in db, 1 = successful update req, 2 = update req failed
+
+    Returns:
+        Dict -- for each status show the number of items
+    """
+    amount_in_status_0 = (
+        db_session.query(MediaObject).filter(MediaObject.status == 0).count()
+    )
+    amount_in_status_1 = (
+        db_session.query(MediaObject).filter(MediaObject.status == 1).count()
+    )
+    amount_in_status_2 = (
+        db_session.query(MediaObject).filter(MediaObject.status == 2).count()
+    )
     progress = {
         "0": amount_in_status_0,
         "1": amount_in_status_1,
-        "2": amount_in_status_2
+        "2": amount_in_status_2,
     }
 
     return json.dumps(progress)
@@ -206,7 +225,10 @@ def start():
         number_of_media_ids = total_number_of_results
 
     # step 1: keep calling the mediahaven-api until all results are received
-    while number_of_media_ids < total_number_of_results and number_of_media_ids < 200:
+    while (
+        number_of_media_ids < total_number_of_results
+        and number_of_media_ids < cfg["max_amount_to_process"]
+    ):
         # map items to a mediaobject
         media_objects = list(
             map(
@@ -226,5 +248,4 @@ def start():
 
 
 if __name__ == "__main__":
-    init_db()
     start()
