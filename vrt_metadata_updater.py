@@ -16,7 +16,7 @@ import structlog
 import yaml
 from requests.auth import HTTPBasicAuth
 
-from database import db_session
+from database import db_session, init_db
 from models import MediaObject
 
 # logger configuration
@@ -44,9 +44,6 @@ structlog.configure(
 )
 
 log = structlog.get_logger()
-
-fileHandler = logging.FileHandler("{0}/{1}.log".format(".", "metadata_updater"))
-log.addHandler(fileHandler)
 
 # Load config file
 DEFAULT_CFG_FILE = "./config.yml"
@@ -125,14 +122,14 @@ def write_media_objects_to_db(media_objects):
         obj = (
             db_session.query(MediaObject)
             .filter(MediaObject.vrt_media_id == media_object.vrt_media_id)
-            .one_or_none()
+            .first()
         )
         if obj is None:
             db_session.add(media_object)
             log.info(
                 "vrt media id written to DB", vrt_media_id=media_object.vrt_media_id
             )
-    db_session.commit()
+            db_session.commit()
 
 
 def process_media_ids():
@@ -225,17 +222,17 @@ def start():
         number_of_media_ids = total_number_of_results
 
     # step 1: keep calling the mediahaven-api until all results are received
-    while (
-        number_of_media_ids < total_number_of_results
-        and number_of_media_ids < cfg["max_amount_to_process"]
+    while number_of_media_ids < total_number_of_results and (
+        number_of_media_ids < cfg["max_amount_to_process"]
+        or cfg["max_amount_to_process"] == 0
     ):
-        # map items to a mediaobject
-        media_objects = list(
-            map(
-                lambda x: MediaObject(x["Dynamic"]["dc_identifier_cpid"]),
-                media_data["MediaDataList"],
-            )
-        )
+        media_objects = list()
+        # map items to a mediaobject if they have a dc_identifier_localid
+        for item in media_data["MediaDataList"]:
+            if "dc_identifier_localid" in item["Dynamic"]:
+                media_objects.append(
+                    MediaObject(item["Dynamic"]["dc_identifier_localid"])
+                )
 
         write_media_objects_to_db(media_objects)
         # update amount of items processed
@@ -248,4 +245,5 @@ def start():
 
 
 if __name__ == "__main__":
+    init_db()
     start()

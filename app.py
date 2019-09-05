@@ -1,5 +1,5 @@
 from flask import Flask
-from database import db_session
+from database import db_session, init_db
 import vrt_metadata_updater
 
 app = Flask(__name__)
@@ -21,4 +21,5 @@ def shutdown_session(exception=None):
 
 
 if __name__ == '__main__':
+    init_db()
     app.run(host="0.0.0.0", debug=True) 
