@@ -15,8 +15,9 @@ RUN addgroup --gid "$GID" "$USER" \
     "$USER"
 COPY . .
 RUN rm -rf public/*
-RUN chown rudolf:rudolf -R .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN chmod -R 775 .
+RUN chown rudolf:rudolf -R .
 USER rudolf
 ADD ./app.py /app/app.py
 ADD ./app_uwsgi.ini /app/app_uwsgi.ini
