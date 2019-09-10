@@ -18,32 +18,7 @@ from requests.auth import HTTPBasicAuth
 
 from database import db_session, init_db
 from models import MediaObject
-
-# logger configuration
-logging.basicConfig(format="%(message)s", level=logging.INFO, stream=sys.stdout)
-
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,  # First step, filter by level to
-        structlog.stdlib.add_logger_name,  # module name
-        structlog.stdlib.add_log_level,  # log level
-        structlog.stdlib.PositionalArgumentsFormatter(),  # % formatting
-        structlog.processors.StackInfoRenderer(),  # adds stack if stack_info=True
-        structlog.processors.format_exc_info,  # Formats exc_info
-        structlog.processors.UnicodeDecoder(),  # Decodes all bytes in dict to unicode
-        structlog.processors.TimeStamper(
-            fmt="iso"
-        ),  # Because timestamps! UTC by default
-        structlog.stdlib.render_to_log_kwargs,  # Preps for logging call
-        structlog.processors.JSONRenderer(),  # to json
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
-
-log = structlog.get_logger()
+from viaa.logging import logger
 
 # Load config file
 DEFAULT_CFG_FILE = "./config.yml"
@@ -51,7 +26,6 @@ with open(DEFAULT_CFG_FILE, "r") as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
 
 token = ""
-
 
 def authenticate(func):
     """Gets new token if no token"""
@@ -84,7 +58,7 @@ def get_token():
         rtoken = r.json()["access_token"]
         token = "Bearer " + rtoken
     except Exception as e:
-        log.critical(str(e))
+        logger.critical(str(e))
         return None
     return token
 
@@ -126,7 +100,7 @@ def write_media_objects_to_db(media_objects):
         )
         if obj is None:
             db_session.add(media_object)
-            log.info(
+            logger.info(
                 "vrt media id written to DB", vrt_media_id=media_object.vrt_media_id
             )
             db_session.commit()
@@ -162,7 +136,7 @@ def request_metadata_update(media_id):
         "destination": "mediahaven",
     }
 
-    log.info(
+    logger.info(
         "creating vrt metadata update request", vrt_media_id=media_id, request=payload
     )
 
@@ -171,14 +145,14 @@ def request_metadata_update(media_id):
     )
 
     if response.status_code == 200 and response.json()["status"] == "OK":
-        log.info(
+        logger.info(
             "vrt metadata update request successful",
             vrt_media_id=media_id,
             status_code=response.status_code,
         )
         return True
     else:
-        log.critical(
+        logger.critical(
             "vrt metadata update request failed",
             vrt_media_id=media_id,
             status_code=response.status_code,
@@ -245,5 +219,6 @@ def start():
 
 
 if __name__ == "__main__":
+    logger.info("starting")
     init_db()
     start()
