@@ -7,7 +7,11 @@ app = Flask(__name__)
 
 @app.route("/start", methods=["POST"])
 def start():
-    return vrt_metadata_updater.start()
+    try:
+        vrt_metadata_updater.start()
+    except Exception as e:
+        return False
+    return True
 
 
 @app.route("/progress")
@@ -21,5 +25,6 @@ def shutdown_session(exception=None):
 
 
 if __name__ == '__main__':
+    print("starting flask")
     init_db()
     app.run(host="0.0.0.0", debug=True) 

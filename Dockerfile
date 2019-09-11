@@ -1,27 +1,22 @@
-FROM python:3.7
+FROM python:3.7-alpine3.10
+
+RUN apk add --no-cache \
+        python3 \
+        uwsgi-python3
+
+# add python to path otherwise uwsgi will not find flask package
+ENV PYTHONPATH=$PYTHONPATH:/usr/local/lib/python3.7/site-packages:/usr/lib/python3.7/site-packages
+
 VOLUME /usr/src/app/public
 WORKDIR /usr/src/app
-ENV USER=rudolf
-ENV UID=12006
-ENV GID=12006
-RUN addgroup --gid "$GID" "$USER" \
-    && adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "$(pwd)" \
-    --ingroup "$USER" \
-    --no-create-home \
-    --uid "$UID" \
-    "$USER"
+
 COPY . .
-RUN rm -rf public/*
-RUN pip install --no-cache-dir -r requirements.txt
-RUN chmod -R 775 .
-RUN chown rudolf:rudolf -R .
-USER rudolf
-ADD ./app.py /app/app.py
-ADD ./app_uwsgi.ini /app/app_uwsgi.ini
-ADD ./app_uwsgi.py /app/app_uwsgi.py
-ENV PATH "$PATH:/app/.local/bin"
+RUN pip3 install -r requirements.txt
+
+# create database file if it doesn't exist and allow read/write
+RUN touch database.db
+RUN chmod a+rw database.db
+RUN chmod 775 .
+
 EXPOSE 5000
 CMD ["uwsgi", "app_uwsgi.ini"]
