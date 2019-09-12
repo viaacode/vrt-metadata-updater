@@ -47,3 +47,5 @@ To get the current progress, send a `GET` request to `http://0.0.0.0:5000/progre
 To start the service, send a `POST` request to `http://0.0.0.0:5000/start`
 
 ## Testing
+
+You can run the unit tests with `python -m pytest` from within the root folder.
