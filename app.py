@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+#  @Author: Rudolf De Geijter
+#
+#  app.py
+#  
+
 from flask import Flask
 from database import db_session, init_db
 import vrt_metadata_updater
@@ -14,7 +22,7 @@ def start():
     return True
 
 
-@app.route("/progress")
+@app.route("/progress", methods=["GET"])
 def get_progress():
     return vrt_metadata_updater.get_progress()
 

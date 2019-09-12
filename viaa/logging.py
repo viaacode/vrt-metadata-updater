@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+#  @Author: Rudolf De Geijter
+#
+#  viaa/logging.py
+#  
+
 import logging
 import sys
 

@@ -1,8 +1,10 @@
-"""
-Created on: 2019-08-22 10:47:21
-
-@Author: Rudolf De Geijter
-"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+#  @Author: Rudolf De Geijter
+#
+#  vrt_metadata_updater.py
+#  
 
 import functools
 import json
@@ -28,7 +30,7 @@ with open(DEFAULT_CFG_FILE, "r") as ymlfile:
 token = ""
 
 def authenticate(func):
-    """Gets new token if no token"""
+    """Gets a new token if no token is present."""
 
     @functools.wraps(func)
     def wrapper_authenticate(*args, **kwargs):
@@ -65,7 +67,7 @@ def get_token():
 
 @authenticate
 def get_fragments(offset=0):
-    """gets 100 fragments at a time for a configured media type
+    """Gets the next 100 fragments at a time for a configured media type.
 
     Keyword Arguments:
         offset {int} -- offset for paging (default: {0})
@@ -87,7 +89,7 @@ def get_fragments(offset=0):
 
 
 def write_media_objects_to_db(media_objects):
-    """Add the media_objects to the database if they don't exist, otherwise ignore them
+    """Add the media_objects to the database if they don't exist, otherwise ignore them.
 
     Arguments:
         media_objects {List} -- objects containing the vrt_media_id
@@ -107,7 +109,7 @@ def write_media_objects_to_db(media_objects):
 
 
 def process_media_ids():
-    """requests metadata update for all media ids with status == 0"""
+    """Requests a metadata update for all media ids with status equal to zero."""
     objects = db_session.query(MediaObject).filter(MediaObject.status == 0).all()
     for obj in objects:
         success = request_metadata_update(obj.vrt_media_id.strip())
@@ -122,7 +124,7 @@ def process_media_ids():
 
 
 def request_metadata_update(media_id):
-    """sends a request to update the metadata to the configured host. 
+    """Sends a request to update the metadata to the configured host. 
 
     Arguments:
         media_id {str} -- the VRT Media ID to be updated
@@ -161,7 +163,10 @@ def request_metadata_update(media_id):
 
 
 def get_progress():
-    """0 = in db, 1 = successful update req, 2 = update req failed
+    """Returns the current status of the script as a dictionary.
+    status 0 = in db
+    status 1 = successful update req
+    status 2 = update req failed
 
     Returns:
         Dict -- for each status show the number of items

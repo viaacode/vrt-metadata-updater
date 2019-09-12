@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+#  @Author: Rudolf De Geijter
+#
+#  tests/test_metadata_update.py
+#  
+
 import os
 import sys
 

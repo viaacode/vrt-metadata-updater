@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+#  @Author: Rudolf De Geijter
+#
+#  models.py
+#   
+
 from database import Base
 from sqlalchemy import Column, DateTime, Integer, String
 from datetime import datetime

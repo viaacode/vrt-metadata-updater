@@ -1,7 +1,6 @@
 FROM python:3.7-alpine3.10
 
 RUN apk add --no-cache \
-        python3 \
         uwsgi-python3
 
 # add python to path otherwise uwsgi will not find flask package
