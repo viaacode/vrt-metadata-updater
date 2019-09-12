@@ -9,9 +9,9 @@
 import functools
 import json
 import logging
-from datetime import datetime
-import time
 import sys
+import time
+from datetime import datetime
 
 import requests
 import structlog
@@ -20,7 +20,7 @@ from requests.auth import HTTPBasicAuth
 
 from database import db_session, init_db
 from models import MediaObject
-from viaa.logging import logger
+from viaa.logging import get_logger
 
 # Load config file
 DEFAULT_CFG_FILE = "./config.yml"
@@ -28,6 +28,8 @@ with open(DEFAULT_CFG_FILE, "r") as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
 
 token = ""
+
+logger = get_logger()
 
 def authenticate(func):
     """Gets a new token if no token is present."""

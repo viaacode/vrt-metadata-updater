@@ -35,4 +35,7 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
-logger = structlog.get_logger()
+def get_logger():
+    logger = structlog.get_logger()
+    return logger
+    
