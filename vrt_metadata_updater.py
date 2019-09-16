@@ -15,23 +15,17 @@ from datetime import datetime
 
 import requests
 import structlog
-import yaml
 from requests.auth import HTTPBasicAuth
 
 from database import db_session, init_db
 from models import MediaObject
 from viaa.logging import get_logger
 
-# Load config file
-DEFAULT_CFG_FILE = "./config.yml"
-with open(DEFAULT_CFG_FILE, "r") as ymlfile:
-    cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
-
 logger = get_logger()
 
 class VrtMetadataUpdater():
     def __init__(self, config):
-        self.config = config
+        self.cfg = config
         self.token = ""
 
 
@@ -48,9 +42,9 @@ class VrtMetadataUpdater():
 
 
     def get_token(self):
-        user = cfg["environment"]["mediahaven"]["username"]
-        password = cfg["environment"]["mediahaven"]["password"]
-        url = cfg["environment"]["mediahaven"]["host"] + "/oauth/access_token"
+        user = self.cfg["environment"]["mediahaven"]["username"]
+        password = self.cfg["environment"]["mediahaven"]["password"]
+        url = self.cfg["environment"]["mediahaven"]["host"] + "/oauth/access_token"
         payload = {"grant_type": "password"}
 
         try:
@@ -81,7 +75,7 @@ class VrtMetadataUpdater():
             Dict -- contains the fragments and the total number of results
         """
         url = (
-            cfg["environment"]["mediahaven"]["host"]
+            self.cfg["environment"]["mediahaven"]["host"]
             + f'/media/?q=%2b(type_viaa:"{cfg["media_type"]}")\
             &startIndex={offset}&nrOfResults=100'
         )
@@ -147,7 +141,7 @@ class VrtMetadataUpdater():
         )
 
         response = requests.post(
-            cfg["environment"]["vrt_request_api"]["host"], data=json.dumps(payload)
+            self.cfg["environment"]["vrt_request_api"]["host"], data=json.dumps(payload)
         )
 
         if response.status_code == 200 and response.json()["status"] == "OK":
@@ -206,8 +200,8 @@ class VrtMetadataUpdater():
 
         # step 1: keep calling the mediahaven-api until all results are received
         while number_of_media_ids < total_number_of_results and (
-            number_of_media_ids < cfg["max_amount_to_process"]
-            or cfg["max_amount_to_process"] == 0
+            number_of_media_ids < self.cfg["max_amount_to_process"]
+            or self.cfg["max_amount_to_process"] == 0
         ):
             media_objects = list()
             # map items to a mediaobject if they have a dc_identifier_localid

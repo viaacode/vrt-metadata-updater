@@ -23,7 +23,13 @@ class TestMetadataUpdater(unittest.TestCase):
         with patch("vrt_metadata_updater.requests") as mock_requests:
             mock_requests.post.side_effect = Timeout
             with self.assertRaises(Timeout):
-                vrt_metadata_updater = VrtMetadataUpdater({})
+                vrt_metadata_updater = VrtMetadataUpdater({
+                    "environment": {
+                        "vrt_request_api": {
+                            "host": "mock"
+                        }
+                    }
+                })
                 vrt_metadata_updater.request_metadata_update("1234")
                 mock_requests.post.assert_called_once()
 
