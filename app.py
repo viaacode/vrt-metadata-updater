@@ -6,12 +6,11 @@
 #  app.py
 #  
 
-from flask import Flask
 import yaml
+from flask import Flask
 
-
-from vrt_metadata_updater import VrtMetadataUpdater
 from database import db_session, init_db
+from vrt_metadata_updater import VrtMetadataUpdater
 
 app = Flask(__name__)
 
@@ -19,6 +18,7 @@ DEFAULT_CFG_FILE = "./config.yml"
 
 @app.route("/start", methods=["POST"])
 def start():
+    """Starts the metadata updater with supplied config."""
     vrt_metadata_updater = VrtMetadataUpdater(cfg)
     try:
         vrt_metadata_updater.start()
@@ -29,6 +29,11 @@ def start():
 
 @app.route("/progress", methods=["GET"])
 def get_progress():
+    """Gets the current progress by giving the amount of items in each status.
+    
+    Returns:
+        [type] -- [description]
+    """
     vrt_metadata_updater = VrtMetadataUpdater(cfg)
 
     return vrt_metadata_updater.get_progress()

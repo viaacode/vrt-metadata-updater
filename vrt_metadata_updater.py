@@ -30,8 +30,7 @@ class VrtMetadataUpdater():
 
 
     def authenticate(func):
-        """Gets a new token if no token is present."""
-
+        """Wrapper that gets a new token if no token is present in the class instance."""
         @functools.wraps(func)
         def wrapper_authenticate(self, *args, **kwargs):
             if not self.token:
@@ -42,6 +41,7 @@ class VrtMetadataUpdater():
 
 
     def get_token(self):
+        """Gets an OAuth token that can be used in mediahaven requests to authenticate."""
         user = self.cfg["environment"]["mediahaven"]["username"]
         password = self.cfg["environment"]["mediahaven"]["password"]
         url = self.cfg["environment"]["mediahaven"]["host"] + "/oauth/access_token"
