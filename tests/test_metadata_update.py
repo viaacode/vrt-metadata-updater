@@ -8,11 +8,12 @@
 
 import os
 import sys
-
 import unittest
-from requests.exceptions import Timeout
 from unittest.mock import patch
-import vrt_metadata_updater
+
+from requests.exceptions import Timeout
+
+from vrt_metadata_updater import VrtMetadataUpdater
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -22,6 +23,7 @@ class TestMetadataUpdater(unittest.TestCase):
         with patch("vrt_metadata_updater.requests") as mock_requests:
             mock_requests.post.side_effect = Timeout
             with self.assertRaises(Timeout):
+                vrt_metadata_updater = VrtMetadataUpdater({})
                 vrt_metadata_updater.request_metadata_update("1234")
                 mock_requests.post.assert_called_once()
 

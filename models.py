@@ -6,9 +6,11 @@
 #  models.py
 #   
 
-from database import Base
-from sqlalchemy import Column, DateTime, Integer, String
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Integer, String
+
+from database import Base
 
 
 class MediaObject(Base):

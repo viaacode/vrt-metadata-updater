@@ -34,11 +34,11 @@ Gets all fragments for a given type from mediahaven and requests a metadata upda
 
 #### With Docker
 
-run `docker run -p 5000:5000 vrt-metadata-updater`
+Run `docker run -p 5000:5000 vrt-metadata-updater`
 
 #### Without Docker
 
-run `python app.py`
+Run `python app.py`
 
 ### Using the service
 
@@ -48,4 +48,5 @@ To start the service, send a `POST` request to `http://0.0.0.0:5000/start`
 
 ## Testing
 
-You can run the unit tests with `python -m pytest` from within the root folder.
+1. install pytest by running `pip install pytest`
+2. run the unit tests with `python -m pytest` from within the root folder.

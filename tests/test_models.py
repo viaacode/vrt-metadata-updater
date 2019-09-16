@@ -8,11 +8,12 @@
 
 import os
 import sys
-from datetime import datetime
 import time
-
 import unittest
+from datetime import datetime
+
 import pytest
+
 from models import MediaObject
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
