@@ -25,8 +25,8 @@ from viaa.logging import get_logger
 logger = get_logger()
 
 class VrtMetadataUpdater():
-    def __init__(self, config):
-        self.cfg = config
+    def __init__(self, config: dict):
+        self.cfg: dict = config
         self.token = ""
 
 
@@ -43,9 +43,9 @@ class VrtMetadataUpdater():
 
     def get_token(self) -> str:
         """Gets an OAuth token that can be used in mediahaven requests to authenticate."""
-        user = self.cfg["environment"]["mediahaven"]["username"]
-        password = self.cfg["environment"]["mediahaven"]["password"]
-        url = self.cfg["environment"]["mediahaven"]["host"] + "/oauth/access_token"
+        user: str = self.cfg["environment"]["mediahaven"]["username"]
+        password:str = self.cfg["environment"]["mediahaven"]["password"]
+        url: str = self.cfg["environment"]["mediahaven"]["host"] + "/oauth/access_token"
         payload = {"grant_type": "password"}
 
         try:
@@ -75,13 +75,12 @@ class VrtMetadataUpdater():
         Returns:
             dict -- contains the fragments and the total number of results
         """
-        url = (
+        url: str = (
             self.cfg["environment"]["mediahaven"]["host"]
             + f'/media/?q=%2b(type_viaa:"{self.cfg["media_type"]}")\
             &startIndex={offset}&nrOfResults=100'
         )
-        headers = {"Authorization": self.token, "Accept": "application/vnd.mediahaven.v2+json"}
-        logger.info(self.token)
+        headers: dict = {"Authorization": self.token, "Accept": "application/vnd.mediahaven.v2+json"}
         response = requests.get(url, headers=headers)
         
         media_data_list = response.json()
@@ -111,7 +110,7 @@ class VrtMetadataUpdater():
 
     def process_media_ids(self) -> None:
         """Requests a metadata update for all media ids with status equal to zero."""
-        objects = db_session.query(MediaObject).filter(MediaObject.status == 0).all()
+        objects: List[MediaObject] = db_session.query(MediaObject).filter(MediaObject.status == 0).all()
         for obj in objects:
             success = self.request_metadata_update(obj.vrt_media_id.strip())
             obj.last_update = datetime.now()
@@ -163,7 +162,7 @@ class VrtMetadataUpdater():
 
 
     def get_progress(self) -> str:
-        """Returns the current status of the script as a dictionary.
+        """Returns the current status of the script as a JSON string.
         status 0 = in db
         status 1 = successful update req
         status 2 = update req failed
@@ -226,4 +225,4 @@ class VrtMetadataUpdater():
     if __name__ == "__main__":
         logger.info("starting")
         init_db()
-        start(self)
+        start()

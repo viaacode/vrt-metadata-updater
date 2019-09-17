@@ -17,7 +17,7 @@ app = Flask(__name__)
 DEFAULT_CFG_FILE = "./config.yml"
 
 @app.route("/start", methods=["POST"])
-def start():
+def start() -> str:
     """Starts the metadata updater with supplied config."""
     vrt_metadata_updater = VrtMetadataUpdater(cfg)
     try:
@@ -28,19 +28,15 @@ def start():
 
 
 @app.route("/progress", methods=["GET"])
-def get_progress():
-    """Gets the current progress by giving the amount of items in each status.
-    
-    Returns:
-        [type] -- [description]
-    """
+def get_progress() -> str:
+    """Gets the current progress by giving the amount of items in each status."""
     vrt_metadata_updater = VrtMetadataUpdater(cfg)
 
     return vrt_metadata_updater.get_progress()
 
 
 @app.teardown_appcontext
-def shutdown_session(exception=None):
+def shutdown_session(exception=None) -> None:
     db_session.remove()
 
 
