@@ -20,7 +20,7 @@ class MediaObject(Base):
     status = Column(Integer)
     last_update = Column(DateTime)
 
-    def __init__(self, vrt_media_id):
+    def __init__(self, vrt_media_id: str) -> None:
         self.vrt_media_id = vrt_media_id
         self.status = 0
         self.last_update = datetime.now()

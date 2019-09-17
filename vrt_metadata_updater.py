@@ -16,6 +16,7 @@ from datetime import datetime
 import requests
 import structlog
 from requests.auth import HTTPBasicAuth
+from typing import Dict, List
 
 from database import db_session, init_db
 from models import MediaObject
@@ -33,14 +34,14 @@ class VrtMetadataUpdater():
         """Wrapper that gets a new token if no token is present in the class instance."""
         @functools.wraps(func)
         def wrapper_authenticate(self, *args, **kwargs):
-            if not self.token:
-                token = get_token()
+            if self.token == "":
+                self.token = self.get_token()
             return func(*args, **kwargs)
 
         return wrapper_authenticate
 
 
-    def get_token(self):
+    def get_token(self) -> str:
         """Gets an OAuth token that can be used in mediahaven requests to authenticate."""
         user = self.cfg["environment"]["mediahaven"]["username"]
         password = self.cfg["environment"]["mediahaven"]["password"]
@@ -60,34 +61,35 @@ class VrtMetadataUpdater():
             token = "Bearer " + rtoken
         except Exception as e:
             logger.critical(str(e))
-            return None
+            return ""
         return token
 
 
     @authenticate
-    def get_fragments(self, offset=0):
+    def get_fragments(self, offset: int = 0) -> dict:
         """Gets the next 100 fragments at a time for a configured media type.
 
         Keyword Arguments:
             offset {int} -- offset for paging (default: {0})
 
         Returns:
-            Dict -- contains the fragments and the total number of results
+            dict -- contains the fragments and the total number of results
         """
         url = (
             self.cfg["environment"]["mediahaven"]["host"]
-            + f'/media/?q=%2b(type_viaa:"{cfg["media_type"]}")\
+            + f'/media/?q=%2b(type_viaa:"{self.cfg["media_type"]}")\
             &startIndex={offset}&nrOfResults=100'
         )
-        headers = {"Authorization": token, "Accept": "application/vnd.mediahaven.v2+json"}
+        headers = {"Authorization": self.token, "Accept": "application/vnd.mediahaven.v2+json"}
+        logger.info(self.token)
         response = requests.get(url, headers=headers)
-
+        
         media_data_list = response.json()
 
         return media_data_list
 
 
-    def write_media_objects_to_db(self, media_objects):
+    def write_media_objects_to_db(self, media_objects: List[MediaObject]) -> None:
         """Add the media_objects to the database if they don't exist, otherwise ignore them.
 
         Arguments:
@@ -107,11 +109,11 @@ class VrtMetadataUpdater():
                 db_session.commit()
 
 
-    def process_media_ids(self):
+    def process_media_ids(self) -> None:
         """Requests a metadata update for all media ids with status equal to zero."""
         objects = db_session.query(MediaObject).filter(MediaObject.status == 0).all()
         for obj in objects:
-            success = request_metadata_update(obj.vrt_media_id.strip())
+            success = self.request_metadata_update(obj.vrt_media_id.strip())
             obj.last_update = datetime.now()
             if success:
                 obj.status = 1
@@ -121,7 +123,7 @@ class VrtMetadataUpdater():
             time.sleep(1)
 
 
-    def request_metadata_update(self, media_id):
+    def request_metadata_update(self, media_id: str) -> bool:
         """Sends a request to update the metadata to the configured host. 
 
         Arguments:
@@ -160,14 +162,14 @@ class VrtMetadataUpdater():
             return False
 
 
-    def get_progress(self):
+    def get_progress(self) -> str:
         """Returns the current status of the script as a dictionary.
         status 0 = in db
         status 1 = successful update req
         status 2 = update req failed
 
         Returns:
-            Dict -- for each status show the number of items
+            str -- for each status show the number of items
         """
         amount_in_status_0 = (
             db_session.query(MediaObject).filter(MediaObject.status == 0).count()
@@ -187,9 +189,9 @@ class VrtMetadataUpdater():
         return json.dumps(progress)
 
 
-    def start(self):
+    def start(self) -> None:
         # mediahaven call so we can get total number of results
-        media_data = get_fragments()
+        media_data = self.get_fragments(self)
 
         number_of_media_ids = 0
         total_number_of_results = media_data["TotalNrOfResults"]
@@ -211,17 +213,17 @@ class VrtMetadataUpdater():
                         MediaObject(item["Dynamic"]["dc_identifier_localid"])
                     )
 
-            write_media_objects_to_db(media_objects)
+            self.write_media_objects_to_db(media_objects)
             # update amount of items processed
             number_of_media_ids += len(media_objects)
             # get new fragments
-            media_data = get_fragments(offset=number_of_media_ids)
+            media_data = self.get_fragments(offset=number_of_media_ids)
 
         # step 2: send each media-id for update
-        process_media_ids()
+        self.process_media_ids()
 
 
     if __name__ == "__main__":
         logger.info("starting")
         init_db()
-        start()
+        start(self)

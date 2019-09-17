@@ -49,8 +49,9 @@ MANIFEST
 .venv*/
 env/
 
-#config
+# Project
 config.yml
 ids.txt
 .vscode/
 database.db
+.mypy_cache

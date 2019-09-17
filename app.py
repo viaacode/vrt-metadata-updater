@@ -23,8 +23,8 @@ def start():
     try:
         vrt_metadata_updater.start()
     except Exception as e:
-        return False
-    return True
+        return f"An error has occured. {e}"
+    return "Requested an update for all items."
 
 
 @app.route("/progress", methods=["GET"])
