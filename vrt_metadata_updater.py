@@ -15,7 +15,9 @@ from datetime import datetime
 
 import requests
 import structlog
+import yaml
 from requests.auth import HTTPBasicAuth
+from requests.exceptions import ConnectionError
 from typing import Dict, List
 
 from database import db_session, init_db
@@ -36,7 +38,7 @@ class VrtMetadataUpdater():
         def wrapper_authenticate(self, *args, **kwargs):
             if self.token == "":
                 self.token = self.get_token()
-            return func(*args, **kwargs)
+            return func(self, *args, **kwargs)
 
         return wrapper_authenticate
 
@@ -56,12 +58,12 @@ class VrtMetadataUpdater():
             )
 
             if r.status_code != 201:
-                raise ConnectionError(f"Failed get a token. Status: {r.status_code}")
+                raise ConnectionError(f"Failed to get a token. Status: {r.status_code}")
             rtoken = r.json()["access_token"]
             token = "Bearer " + rtoken
-        except Exception as e:
+        except ConnectionError as e:
             logger.critical(str(e))
-            return ""
+            raise
         return token
 
 
@@ -108,10 +110,9 @@ class VrtMetadataUpdater():
                 db_session.commit()
 
 
-    def process_media_ids(self) -> None:
-        """Requests a metadata update for all media ids with status equal to zero."""
-        objects: List[MediaObject] = db_session.query(MediaObject).filter(MediaObject.status == 0).all()
-        for obj in objects:
+    def process_media_objects(self, list_of_media_objects: List[MediaObject]) -> None:
+        """Requests a metadata update and updates the status for all media objects."""
+        for obj in list_of_media_objects:
             success = self.request_metadata_update(obj.vrt_media_id.strip())
             obj.last_update = datetime.now()
             if success:
@@ -216,13 +217,21 @@ class VrtMetadataUpdater():
             # update amount of items processed
             number_of_media_ids += len(media_objects)
             # get new fragments
-            media_data = self.get_fragments(offset=number_of_media_ids)
+            media_data = self.get_fragments(self, offset=number_of_media_ids)
 
-        # step 2: send each media-id for update
-        self.process_media_ids()
+        # step 2: send each media object with status 0 for update
+        objects: List[MediaObject] = db_session.query(MediaObject).filter(MediaObject.status == 0).all()
+
+        self.process_media_objects(objects)
 
 
-    if __name__ == "__main__":
-        logger.info("starting")
-        init_db()
-        start()
+if __name__ == "__main__":
+    logger.info("starting")
+    init_db()
+    DEFAULT_CFG_FILE = "./config.yml"
+
+    # Load config file
+    with open(DEFAULT_CFG_FILE, "r") as ymlfile:
+        cfg: dict = yaml.load(ymlfile, Loader=yaml.FullLoader)
+    
+    VrtMetadataUpdater(cfg).start()
