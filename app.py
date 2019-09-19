@@ -8,13 +8,20 @@
 
 import yaml
 from flask import Flask
+from healthcheck import HealthCheck
 
 from database import db_session, init_db
 from vrt_metadata_updater import VrtMetadataUpdater
 
 app = Flask(__name__)
 
+health = HealthCheck()
+
 DEFAULT_CFG_FILE = "./config.yml"
+
+# Load config file
+with open(DEFAULT_CFG_FILE, "r") as ymlfile:
+    cfg: dict = yaml.load(ymlfile, Loader=yaml.FullLoader)
 
 @app.route("/start", methods=["POST"])
 def start() -> str:
@@ -38,12 +45,27 @@ def get_progress() -> str:
 @app.teardown_appcontext
 def shutdown_session(exception=None) -> None:
     db_session.remove()
+    
 
+def database_available():
+    return True, "database ok"
+
+
+def config_available():
+    return True, "config ok"
+
+
+def mediahaven_connection_possible():
+    return True, "mediahaven ok"
+
+health.add_check(database_available)
+health.add_check(config_available)
+health.add_check(mediahaven_connection_possible)
+
+
+app.add_url_rule("/health", "healthcheck", view_func=lambda: health.run())
 
 if __name__ == '__main__':
-    # Load config file
-    with open(DEFAULT_CFG_FILE, "r") as ymlfile:
-        cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
     # Init database to make sure file and tables exist
     init_db()
     app.run(host="0.0.0.0", debug=True) 
