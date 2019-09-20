@@ -83,10 +83,16 @@ class VrtMetadataUpdater():
             &startIndex={offset}&nrOfResults=100'
         )
         headers: dict = {"Authorization": self.token, "Accept": "application/vnd.mediahaven.v2+json"}
-        response = requests.get(url, headers=headers)
         
-        media_data_list = response.json()
-
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code != 200:
+                raise ConnectionError(f"Failed to get fragments. Status: {response.status_code}")
+            media_data_list = response.json()
+        except ConnectionError as e:
+            logger.critical(str(e))
+            raise
+        
         return media_data_list
 
 
@@ -192,6 +198,7 @@ class VrtMetadataUpdater():
     def start(self) -> None:
         # mediahaven call so we can get total number of results
         media_data = self.get_fragments(self)
+        print(media_data)
 
         number_of_media_ids = 0
         total_number_of_results = media_data["TotalNrOfResults"]
