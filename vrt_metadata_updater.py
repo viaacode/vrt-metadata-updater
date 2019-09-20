@@ -82,7 +82,7 @@ class VrtMetadataUpdater():
             + f'/media/?q=%2b(type_viaa:"{self.cfg["media_type"]}")\
                 &startIndex={offset}&nrOfResults=100'
         )
-        print(url)
+
         headers: dict = {"Authorization": self.token, "Accept": "application/vnd.mediahaven.v2+json"}
         
         try:
@@ -199,7 +199,6 @@ class VrtMetadataUpdater():
     def start(self) -> None:
         # mediahaven call so we can get total number of results
         media_data = self.get_fragments()
-        print(media_data)
 
         number_of_media_ids = 0
         total_number_of_results = media_data["TotalNrOfResults"]
