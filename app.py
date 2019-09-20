@@ -52,6 +52,16 @@ def database_available():
 
 
 def config_available():
+    try:
+        cfg["environment"]["mediahaven"]["username"]
+        cfg["environment"]["mediahaven"]["password"]
+        cfg["environment"]["mediahaven"]["host"]
+        cfg["environment"]["vrt_request_api"]["host"]
+        cfg["media_type"]
+        cfg["max_amount_to_process"]
+        cfg["throttle_time"]
+    except KeyError as exception:
+        return False, str(exception)
     return True, "config ok"
 
 
@@ -63,7 +73,7 @@ health.add_check(config_available)
 health.add_check(mediahaven_connection_possible)
 
 
-app.add_url_rule("/health", "healthcheck", view_func=lambda: health.run())
+app.add_url_rule("/health", "health", view_func=lambda: health.run())
 
 if __name__ == '__main__':
     # Init database to make sure file and tables exist

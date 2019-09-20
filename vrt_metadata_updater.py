@@ -127,7 +127,7 @@ class VrtMetadataUpdater():
             else:
                 obj.status = 2
             db_session.commit()
-            time.sleep(1)
+            time.sleep(self.cfg["throttle_time"])
 
 
     def request_metadata_update(self, media_id: str) -> bool:
