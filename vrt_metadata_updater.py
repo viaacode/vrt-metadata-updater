@@ -224,7 +224,7 @@ class VrtMetadataUpdater():
             # update amount of items processed
             number_of_media_ids += len(media_objects)
             # get new fragments
-            media_data = self.get_fragments(self, offset=number_of_media_ids)
+            media_data = self.get_fragments(offset=number_of_media_ids)
 
         # step 2: send each media object with status 0 for update
         objects: List[MediaObject] = db_session.query(MediaObject).filter(MediaObject.status == 0).all()

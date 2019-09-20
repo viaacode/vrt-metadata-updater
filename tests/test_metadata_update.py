@@ -104,8 +104,14 @@ class TestMetadataUpdater(unittest.TestCase):
             "media_type": "mock_type",
             "max_amount_to_process": 0
         }
+        def get(url, headers) -> tuple:
+            Response = namedtuple("Response", ["status_code", "json"])
+            def json():
+                return {"status": "OK"}
+            r = Response(200, json)
+            return r
         with patch("vrt_metadata_updater.requests") as mock_requests:
-            mock_requests.get.result = {}
+            mock_requests.get.side_effect = get
             with patch("vrt_metadata_updater.VrtMetadataUpdater.get_token") as mock_token:
                 mock_token.side_effect = "Bearer token"
                 
