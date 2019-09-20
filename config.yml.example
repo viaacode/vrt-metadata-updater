@@ -7,3 +7,4 @@ environment:
         password: 
 media_type: audio
 max_amount_to_process: 0 # 0 for no limit
+throttle_time: 1
