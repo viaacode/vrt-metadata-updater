@@ -8,14 +8,15 @@
 
 import yaml
 from flask import Flask
-from healthcheck import HealthCheck
+from healthcheck import EnvironmentDump, HealthCheck
 
-from database import db_session, init_db
+from database import db_session, init_db, engine
 from vrt_metadata_updater import VrtMetadataUpdater
 
 app = Flask(__name__)
 
-health = HealthCheck()
+readiness = HealthCheck()
+liveness = EnvironmentDump()
 
 DEFAULT_CFG_FILE = "./config.yml"
 
@@ -48,32 +49,19 @@ def shutdown_session(exception=None) -> None:
     
 
 def database_available():
-    return True, "database ok"
+    table_exists = engine.dialect.has_table(engine, 'media_objects')
+    return table_exists, "database exists with table media_objects"
 
 
 def config_available():
-    try:
-        cfg["environment"]["mediahaven"]["username"]
-        cfg["environment"]["mediahaven"]["password"]
-        cfg["environment"]["mediahaven"]["host"]
-        cfg["environment"]["vrt_request_api"]["host"]
-        cfg["media_type"]
-        cfg["max_amount_to_process"]
-        cfg["throttle_time"]
-    except KeyError as exception:
-        return False, str(exception)
-    return True, "config ok"
+    return bool(cfg), "configfile is not empty"
 
 
-def mediahaven_connection_possible():
-    return True, "mediahaven ok"
+readiness.add_check(database_available)
+readiness.add_check(config_available)
 
-health.add_check(database_available)
-health.add_check(config_available)
-health.add_check(mediahaven_connection_possible)
-
-
-app.add_url_rule("/health", "health", view_func=lambda: health.run())
+app.add_url_rule("/readiness", "readiness", view_func=lambda: readiness.run())
+app.add_url_rule("/liveness", "liveness", view_func=lambda: liveness.run())
 
 if __name__ == '__main__':
     # Init database to make sure file and tables exist

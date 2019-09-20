@@ -84,7 +84,7 @@ class TestMetadataUpdater(unittest.TestCase):
         # Act
         with patch("vrt_metadata_updater.VrtMetadataUpdater.request_metadata_update") as mock_request_update:
             mock_request_update.return_value = True
-            vrt_metadata_updater = VrtMetadataUpdater({})
+            vrt_metadata_updater = VrtMetadataUpdater({"throttle_time": 0})
             vrt_metadata_updater.process_media_objects(media_objects)
             
         # Assert
@@ -101,7 +101,7 @@ class TestMetadataUpdater(unittest.TestCase):
         # Act
         with patch("vrt_metadata_updater.VrtMetadataUpdater.request_metadata_update") as mock_request_update:
             mock_request_update.return_value = False
-            vrt_metadata_updater = VrtMetadataUpdater({})
+            vrt_metadata_updater = VrtMetadataUpdater({"throttle_time": 0})
             vrt_metadata_updater.process_media_objects(media_objects)
             
         # Assert
