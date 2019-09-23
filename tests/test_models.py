@@ -23,7 +23,7 @@ class TestModels(unittest.TestCase):
     def test_new_mediaobject(self):
         test_mediaobject = MediaObject('123test')
         assert test_mediaobject.vrt_media_id == '123test'
-        assert test_mediaobject.status == 12
+        assert test_mediaobject.status == 1
 
 
     def test_new_mediaobject_no_id(self):
