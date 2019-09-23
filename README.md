@@ -24,8 +24,8 @@ Gets all fragments for a given type from mediahaven and requests a metadata upda
 1. clone or download the repository
 2. `cd` into the directory
 3. add `config.yml` and fill it with credentials and mediatype (see `config.yml.example` for format)
-4. create a virtual environment `python -m venv env`
-5. activate the environment `env\scripts\Activate.ps1` in powershell, `source env/bin/activate` in bash
+4. create a virtual environment `python -m venv .`
+5. activate the environment `source bin/activate` on Linux or `Scripts/activate` on Windows.
 6. install dependencies `pip install -r requirements.txt`
 
 ## Usage
@@ -48,5 +48,5 @@ To start the service, send a `POST` request to `http://0.0.0.0:5000/start`
 
 ## Testing
 
-1. install pytest by running `pip install pytest`
-2. run the unit tests with `python -m pytest` from within the root folder.
+1. install test dependencies by running `pip install -r requirements-test.txt`
+2. run the unit tests with `python -m pytest --cov=vrt_metadata_updater --cov-report html tests/` from within the root folder.
