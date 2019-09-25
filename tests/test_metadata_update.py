@@ -104,7 +104,7 @@ class TestMetadataUpdater(unittest.TestCase):
             "media_type": "mock_type",
             "max_amount_to_process": 0
         }
-        def get(url, headers) -> tuple:
+        def get(url, headers, params) -> tuple:
             Response = namedtuple("Response", ["status_code", "json"])
             def json():
                 return {"status": "OK"}
@@ -112,7 +112,7 @@ class TestMetadataUpdater(unittest.TestCase):
             return r
         with patch("vrt_metadata_updater.requests") as mock_requests:
             mock_requests.get.side_effect = get
-            with patch("vrt_metadata_updater.VrtMetadataUpdater.get_token") as mock_token:
+            with patch("vrt_metadata_updater.VrtMetadataUpdater._VrtMetadataUpdater__get_token") as mock_token:
                 mock_token.side_effect = "Bearer token"
                 
                 # Act
@@ -143,7 +143,7 @@ class TestMetadataUpdater(unittest.TestCase):
         # Act
         with self.assertRaises(ConnectionError):
             vrt_metadata_updater = VrtMetadataUpdater(mock_config)
-            result = vrt_metadata_updater.get_token()
+            result = vrt_metadata_updater._VrtMetadataUpdater__get_token()
             
     def test_get_token_mediahaven_fail(self):
         # Arrange
@@ -170,7 +170,7 @@ class TestMetadataUpdater(unittest.TestCase):
             mock_requests.post.side_effect = post
             with self.assertRaises(ConnectionError):
                 vrt_metadata_updater = VrtMetadataUpdater(mock_config)
-                result = vrt_metadata_updater.get_token()
+                result = vrt_metadata_updater._VrtMetadataUpdater__get_token()
                 
             
     def test_get_token_mediahaven_success(self):
@@ -199,7 +199,7 @@ class TestMetadataUpdater(unittest.TestCase):
         with patch("vrt_metadata_updater.requests") as mock_requests:
             mock_requests.post.side_effect = post
             vrt_metadata_updater = VrtMetadataUpdater(mock_config)
-            result = vrt_metadata_updater.get_token()
+            result = vrt_metadata_updater._VrtMetadataUpdater__get_token()
         
         # Assert
         assert result == "Bearer 1234567890qwertyuiop"

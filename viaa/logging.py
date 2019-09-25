@@ -12,7 +12,7 @@ import sys
 import structlog
 
 # logger configuration
-logging.basicConfig(format="%(message)s", level=logging.INFO, stream=sys.stdout)
+logging.basicConfig(format="%(message)s", level=logging.DEBUG, stream=sys.stdout)
 
 structlog.configure(
     processors=[

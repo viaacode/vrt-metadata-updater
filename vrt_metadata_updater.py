@@ -32,31 +32,31 @@ class VrtMetadataUpdater():
         self.token = ""
 
 
-    def authenticate(func):
+    def __authenticate(func):
         """Wrapper that gets a new token if no token is present in the class instance."""
         @functools.wraps(func)
         def wrapper_authenticate(self, *args, **kwargs):
             if self.token == "":
-                self.token = self.get_token()
+                self.token = self.__get_token()
             return func(self, *args, **kwargs)
 
         return wrapper_authenticate
 
 
-    def get_token(self) -> str:
+    def __get_token(self) -> str:
         """Gets an OAuth token that can be used in mediahaven requests to authenticate."""
         user: str = self.cfg["environment"]["mediahaven"]["username"]
         password:str = self.cfg["environment"]["mediahaven"]["password"]
         url: str = self.cfg["environment"]["mediahaven"]["host"] + "/oauth/access_token"
         payload = {"grant_type": "password"}
-
+        
         try:
             r = requests.post(
                 url,
                 auth=HTTPBasicAuth(user.encode("utf-8"), password.encode("utf-8")),
                 data=payload,
             )
-
+             
             if r.status_code != 201:
                 raise ConnectionError(f"Failed to get a token. Status: {r.status_code}")
             rtoken = r.json()["access_token"]
@@ -67,7 +67,7 @@ class VrtMetadataUpdater():
         return token
 
 
-    @authenticate
+    @__authenticate
     def get_fragments(self, offset: int = 0) -> dict:
         """Gets the next 100 fragments at a time for a configured media type.
 
@@ -78,15 +78,22 @@ class VrtMetadataUpdater():
             dict -- contains the fragments and the total number of results
         """
         url: str = (
-            self.cfg["environment"]["mediahaven"]["host"]
-            + f'/media/?q=%2b(type_viaa:"{self.cfg["media_type"]}")\
-                &startIndex={offset}&nrOfResults=100'
+            self.cfg["environment"]["mediahaven"]["host"] + "/media/"
         )
-
-        headers: dict = {"Authorization": self.token, "Accept": "application/vnd.mediahaven.v2+json"}
         
+        headers: dict = {
+            "Authorization": self.token, 
+            "Accept": "application/vnd.mediahaven.v2+json"
+            }
+        
+        params: dict = {
+            "q": f'%2b(type_viaa:"{self.cfg["media_type"]}")',
+            "startIndex": offset,
+            "nrOfResults": 100,
+            }
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, params=params)
+
             if response.status_code != 200:
                 raise ConnectionError(f"Failed to get fragments. Status: {response.status_code}")
             media_data_list = response.json()
@@ -199,7 +206,7 @@ class VrtMetadataUpdater():
     def start(self) -> None:
         # mediahaven call so we can get total number of results
         media_data = self.get_fragments()
-
+        
         number_of_media_ids = 0
         total_number_of_results = media_data["TotalNrOfResults"]
 
@@ -219,6 +226,10 @@ class VrtMetadataUpdater():
                     media_objects.append(
                         MediaObject(item["Dynamic"]["dc_identifier_localid"])
                     )
+                else:
+                    # Reduce total_number_of_results by one to prevent endless loop
+                    logger.debug(f'Item without localid found: {json.dumps(item)}')
+                    total_number_of_results = total_number_of_results - 1
 
             self.write_media_objects_to_db(media_objects)
             # update amount of items processed
