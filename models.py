@@ -24,3 +24,8 @@ class MediaObject(Base):
         self.vrt_media_id = vrt_media_id
         self.status = 0
         self.last_update = datetime.now()
+    
+    
+    def get_dict(self):
+        return dict((column.name, getattr(self, column.name)) for column in self.__table__.columns)
+    

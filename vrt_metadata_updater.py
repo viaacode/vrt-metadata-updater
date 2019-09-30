@@ -12,13 +12,14 @@ import logging
 import sys
 import time
 from datetime import datetime
+from typing import Dict, List
 
 import requests
 import structlog
 import yaml
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import ConnectionError
-from typing import Dict, List
+from sqlalchemy.sql.expression import insert
 
 from database import db_session, init_db
 from models import MediaObject
@@ -69,7 +70,7 @@ class VrtMetadataUpdater():
 
     @__authenticate
     def get_fragments(self, offset: int = 0) -> dict:
-        """Gets the next 100 fragments at a time for a configured media type.
+        """Gets the next 1000 fragments at a time for a configured media type.
 
         Keyword Arguments:
             offset {int} -- offset for paging (default: {0})
@@ -89,7 +90,7 @@ class VrtMetadataUpdater():
         params: dict = {
             "q": f'%2b(type_viaa:"{self.cfg["media_type"]}")',
             "startIndex": offset,
-            "nrOfResults": 100,
+            "nrOfResults": 1000,
             }
         try:
             response = requests.get(url, headers=headers, params=params)
@@ -110,18 +111,11 @@ class VrtMetadataUpdater():
         Arguments:
             media_objects {List} -- objects containing the vrt_media_id
         """
+        media_objects_as_dict = []
         for media_object in media_objects:
-            obj = (
-                db_session.query(MediaObject)
-                .filter(MediaObject.vrt_media_id == media_object.vrt_media_id)
-                .first()
-            )
-            if obj is None:
-                db_session.add(media_object)
-                logger.info(
-                    "vrt media id written to DB", vrt_media_id=media_object.vrt_media_id
-                )
-                db_session.commit()
+            media_objects_as_dict.append(media_object.get_dict())
+        db_session.execute(MediaObject.__table__.insert(prefixes=['OR IGNORE']), media_objects_as_dict, )
+        db_session.commit()
 
 
     def process_media_objects(self, list_of_media_objects: List[MediaObject]) -> None:
@@ -178,10 +172,11 @@ class VrtMetadataUpdater():
 
     def get_progress(self) -> str:
         """Returns the current status of the script as a JSON string.
-        status 0 = in db
-        status 1 = successful update req
-        status 2 = update req failed
-
+        items_in_db = all items in db
+        no_update_request = media id from mediahaven is in the database but no updaterequest has been done
+        update_requests_succes = a metadata update has been requested and api returned success
+        update_requests_failed = a metadata update has been requested but api returned failed
+        
         Returns:
             str -- for each status show the number of items
         """
@@ -195,9 +190,10 @@ class VrtMetadataUpdater():
             db_session.query(MediaObject).filter(MediaObject.status == 2).count()
         )
         progress = {
-            "0": amount_in_status_0,
-            "1": amount_in_status_1,
-            "2": amount_in_status_2,
+            "items_in_db": amount_in_status_0 + amount_in_status_1 + amount_in_status_2,
+            "no_update_request": amount_in_status_0,
+            "update_requests_succes": amount_in_status_1,
+            "update_requests_failed": amount_in_status_2,
         }
 
         return json.dumps(progress)
