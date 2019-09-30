@@ -114,7 +114,7 @@ class VrtMetadataUpdater():
         media_objects_as_dict = []
         for media_object in media_objects:
             media_objects_as_dict.append(media_object.get_dict())
-        db_session.execute(MediaObject.__table__.insert(prefixes=['OR IGNORE']), media_objects_as_dict, )
+        db_session.execute(MediaObject.__table__.insert(prefixes=['OR IGNORE']), media_objects_as_dict)
         db_session.commit()
 
 

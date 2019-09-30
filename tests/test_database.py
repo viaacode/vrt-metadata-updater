@@ -57,7 +57,12 @@ class TestMetadataUpdater(unittest.TestCase):
             progress = vrt_metadata_updater.get_progress()
             
             # Assert
-            assert progress == json.dumps({"0": amount_in_progress, "1": amount_in_progress, "2": amount_in_progress})
+            assert progress == json.dumps({
+                "items_in_db": amount_in_progress * 3, 
+                "no_update_request": amount_in_progress, 
+                "update_requests_succes": amount_in_progress,
+                "update_requests_failed": amount_in_progress,
+            })
             
     
     def test_write_media_objects(self):
@@ -73,8 +78,8 @@ class TestMetadataUpdater(unittest.TestCase):
             vrt_metadata_updater.write_media_objects_to_db(media_objects)
             
         # Assert
-        assert session.add.call_count == 2
-        assert session.commit.call_count == 2
+        assert session.execute.call_count == 1
+        assert session.commit.call_count == 1
         
     
     def test_process_media_ids(self):
