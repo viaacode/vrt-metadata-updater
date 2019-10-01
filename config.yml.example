@@ -1,3 +1,6 @@
+viaa:
+    logging:
+        level: 10
 environment:
     vrt_request_api:
         host: 
@@ -8,3 +11,4 @@ environment:
 media_type: audio
 max_amount_to_process: 0 # 0 for no limit
 throttle_time: 1
+nr_of_results: 1000

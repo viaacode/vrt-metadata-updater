@@ -23,9 +23,10 @@ from sqlalchemy.sql.expression import insert
 
 from database import db_session, init_db
 from models import MediaObject
-from viaa.logging import get_logger
+from viaa.observability import logging
+from viaa.configuration import ConfigParser
 
-logger = get_logger()
+logger = logging.get_logger(config=ConfigParser())
 
 class VrtMetadataUpdater():
     def __init__(self, config: dict):
@@ -90,7 +91,7 @@ class VrtMetadataUpdater():
         params: dict = {
             "q": f'%2b(type_viaa:"{self.cfg["media_type"]}")',
             "startIndex": offset,
-            "nrOfResults": 1000,
+            "nrOfResults": self.cfg["nr_of_results"],
             }
         try:
             response = requests.get(url, headers=headers, params=params)
@@ -111,10 +112,9 @@ class VrtMetadataUpdater():
         Arguments:
             media_objects {List} -- objects containing the vrt_media_id
         """
-        media_objects_as_dict = []
-        for media_object in media_objects:
-            media_objects_as_dict.append(media_object.get_dict())
+        media_objects_as_dict = [media_object.get_dict() for media_object in media_objects]
         db_session.execute(MediaObject.__table__.insert(prefixes=['OR IGNORE']), media_objects_as_dict)
+        logger.info("wrote items")
         db_session.commit()
 
 
