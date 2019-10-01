@@ -34,7 +34,8 @@ class TestMetadataUpdater(unittest.TestCase):
                 }
             },
             "media_type": "mock_type",
-            "max_amount_to_process": 0
+            "max_amount_to_process": 0,
+            "nr_of_results": 1000,
         }
         def post(url, data) -> tuple:
             Response = namedtuple("Response", ["status_code", "json"])
@@ -68,7 +69,8 @@ class TestMetadataUpdater(unittest.TestCase):
                 }
             },
             "media_type": "mock_type",
-            "max_amount_to_process": 0
+            "max_amount_to_process": 0,
+            "nr_of_results": 1000,
         }
         def post(url, data) -> tuple:
             Response = namedtuple("Response", ["status_code", "json"])
@@ -102,7 +104,8 @@ class TestMetadataUpdater(unittest.TestCase):
                 }
             },
             "media_type": "mock_type",
-            "max_amount_to_process": 0
+            "max_amount_to_process": 0,
+            "nr_of_results": 1000,
         }
         def get(url, headers, params) -> tuple:
             Response = namedtuple("Response", ["status_code", "json"])
@@ -138,7 +141,8 @@ class TestMetadataUpdater(unittest.TestCase):
                 }
             },
             "media_type": "mock_type",
-            "max_amount_to_process": 0
+            "max_amount_to_process": 0,
+            "nr_of_results": 1000,
         }
         # Act
         with self.assertRaises(ConnectionError):
@@ -159,7 +163,8 @@ class TestMetadataUpdater(unittest.TestCase):
                 }
             },
             "media_type": "mock_type",
-            "max_amount_to_process": 0
+            "max_amount_to_process": 0,
+            "nr_of_results": 1000,
         }
         def post(url, auth, data) -> tuple:
             Response = namedtuple('Response', ['status_code'])
@@ -187,7 +192,8 @@ class TestMetadataUpdater(unittest.TestCase):
                 }
             },
             "media_type": "mock_type",
-            "max_amount_to_process": 0
+            "max_amount_to_process": 0,
+            "nr_of_results": 1000,
         }
         def post(url, auth, data) -> tuple:
             Response = namedtuple("Response", ["status_code", "json"])
