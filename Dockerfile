@@ -12,10 +12,13 @@ WORKDIR /usr/src/app
 COPY . .
 RUN pip3 install -r requirements.txt
 
-# create database file if it doesn't exist and allow read/write
+# Create database file if it doesn't exist and allow read/write
 RUN touch database.db
 RUN chmod a+rw database.db
 RUN chmod 775 .
 
 EXPOSE 5000
-CMD ["uwsgi", "app_uwsgi.ini"]
+
+# Run the application
+ENTRYPOINT ["python"]
+CMD ["vrt_metadata_updater.py"]

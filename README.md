@@ -49,5 +49,8 @@ To start the service, send a `POST` request to `http://0.0.0.0:5000/start`
 ## Testing
 
 1. Install test dependencies by running `pip install -r requirements-test.txt`
-2. Run the unit tests with `python -m pytest ./tests` from within the root folder.
-3. For a code coverage report run `python -m pytest --cov=vrt_metadata_updater --cov-report html tests/`
+2. Run the unit tests with coverage report:
+
+```shell
+$ python -m pytest --cov=database --cov=vrt_metadata_updater --cov=models tests/
+```
