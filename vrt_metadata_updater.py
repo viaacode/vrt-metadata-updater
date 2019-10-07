@@ -4,7 +4,7 @@
 #  @Author: Rudolf De Geijter
 #
 #  vrt_metadata_updater.py
-#  
+#
 
 import functools
 import json
@@ -31,15 +31,16 @@ logger = logging.get_logger(config=ConfigParser())
 class VrtMetadataUpdater():
     def __init__(self, config: dict):
         self.cfg: dict = config
-        self.token = ""
+        self.token_info = None
 
 
     def __authenticate(func):
         """Wrapper that gets a new token if no token is present in the class instance."""
         @functools.wraps(func)
         def wrapper_authenticate(self, *args, **kwargs):
-            if self.token == "":
-                self.token = self.__get_token()
+            if not self.__is_token_valid(self.token_info):
+                self.token_info = self.__get_token()
+                self.token_info["expires_at"] = int(time.time()) + self.token_info['expires_in']
             return func(self, *args, **kwargs)
 
         return wrapper_authenticate
@@ -51,22 +52,30 @@ class VrtMetadataUpdater():
         password:str = self.cfg["environment"]["mediahaven"]["password"]
         url: str = self.cfg["environment"]["mediahaven"]["host"] + "/oauth/access_token"
         payload = {"grant_type": "password"}
-        
+
         try:
             r = requests.post(
                 url,
                 auth=HTTPBasicAuth(user.encode("utf-8"), password.encode("utf-8")),
                 data=payload,
             )
-             
+
             if r.status_code != 201:
                 raise ConnectionError(f"Failed to get a token. Status: {r.status_code}")
-            rtoken = r.json()["access_token"]
-            token = "Bearer " + rtoken
+            token_info =  r.json()
         except ConnectionError as e:
             logger.critical(str(e))
             raise
-        return token
+        return token_info
+
+
+    def __is_token_valid(self, token_info) -> bool:
+        """Checks if there is a token present and not expired."""
+        if not token_info:
+             return False
+        now = int(time.time())
+
+        return token_info["expires_at"] - now > 60
 
 
     @__authenticate
@@ -82,12 +91,12 @@ class VrtMetadataUpdater():
         url: str = (
             self.cfg["environment"]["mediahaven"]["host"] + "/media/"
         )
-        
+
         headers: dict = {
-            "Authorization": self.token, 
+            "Authorization": f"Bearer {self.token_info['access_token']}",
             "Accept": "application/vnd.mediahaven.v2+json"
             }
-        
+
         params: dict = {
             "q": f'%2b(type_viaa:"{self.cfg["media_type"]}")',
             "startIndex": offset,
@@ -102,7 +111,7 @@ class VrtMetadataUpdater():
         except ConnectionError as e:
             logger.critical(str(e))
             raise
-        
+
         return media_data_list
 
 
@@ -132,7 +141,7 @@ class VrtMetadataUpdater():
 
 
     def request_metadata_update(self, media_id: str) -> bool:
-        """Sends a request to update the metadata to the configured host. 
+        """Sends a request to update the metadata to the configured host.
 
         Arguments:
             media_id {str} -- the VRT Media ID to be updated
@@ -176,7 +185,7 @@ class VrtMetadataUpdater():
         no_update_request = media id from mediahaven is in the database but no updaterequest has been done
         update_requests_succes = a metadata update has been requested and api returned success
         update_requests_failed = a metadata update has been requested but api returned failed
-        
+
         Returns:
             str -- for each status show the number of items
         """
@@ -202,7 +211,7 @@ class VrtMetadataUpdater():
     def start(self) -> None:
         # mediahaven call so we can get total number of results
         media_data = self.get_fragments()
-        
+
         number_of_media_ids = 0
         total_number_of_results = media_data["TotalNrOfResults"]
 
@@ -247,5 +256,5 @@ if __name__ == "__main__":
     # Load config file
     with open(DEFAULT_CFG_FILE, "r") as ymlfile:
         cfg: dict = yaml.load(ymlfile, Loader=yaml.FullLoader)
-    
+
     VrtMetadataUpdater(cfg).start()

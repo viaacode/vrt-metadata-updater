@@ -4,10 +4,11 @@
 #  @Author: Rudolf De Geijter
 #
 #  tests/test_metadata_update.py
-#  
+#
 
 import os
 import sys
+import time
 import unittest
 from collections import namedtuple
 from unittest.mock import patch
@@ -24,7 +25,7 @@ class TestMetadataUpdater(unittest.TestCase):
         # Arrange
         mock_config = {
             "environment": {
-                "vrt_request_api": {                
+                "vrt_request_api": {
                     "host": "http://0.0.0.0"
                 },
                 "mediahaven": {
@@ -45,21 +46,21 @@ class TestMetadataUpdater(unittest.TestCase):
             return r
         with patch("vrt_metadata_updater.requests") as mock_requests:
             mock_requests.post.side_effect = post
-            
+
             # Act
             vrt_metadata_updater = VrtMetadataUpdater(mock_config)
             result = vrt_metadata_updater.request_metadata_update("1234")
-            
+
             # Assert
             assert result == True
             mock_requests.post.assert_called_once()
-                
-    
+
+
     def test_metadata_update_request_fail(self):
         # Arrange
         mock_config = {
             "environment": {
-                "vrt_request_api": {                
+                "vrt_request_api": {
                     "host": "http://0.0.0.0"
                 },
                 "mediahaven": {
@@ -80,21 +81,21 @@ class TestMetadataUpdater(unittest.TestCase):
             return r
         with patch("vrt_metadata_updater.requests") as mock_requests:
             mock_requests.post.side_effect = post
-            
+
             # Act
             vrt_metadata_updater = VrtMetadataUpdater(mock_config)
             result = vrt_metadata_updater.request_metadata_update("1234")
-            
+
             # Assert
             assert result == False
             mock_requests.post.assert_called_once()
-    
-                
+
+
     def test_get_fragments(self):
         # Arrange
         mock_config = {
             "environment": {
-                "vrt_request_api": {                
+                "vrt_request_api": {
                     "host": "http://0.0.0.0"
                 },
                 "mediahaven": {
@@ -115,23 +116,21 @@ class TestMetadataUpdater(unittest.TestCase):
             return r
         with patch("vrt_metadata_updater.requests") as mock_requests:
             mock_requests.get.side_effect = get
-            with patch("vrt_metadata_updater.VrtMetadataUpdater._VrtMetadataUpdater__get_token") as mock_token:
-                mock_token.side_effect = "Bearer token"
-                
                 # Act
-                vrt_metadata_updater = VrtMetadataUpdater(mock_config)
+            vrt_metadata_updater = VrtMetadataUpdater(mock_config)
+            with patch.object(vrt_metadata_updater, "_VrtMetadataUpdater__is_token_valid", return_value = True) as mock_token:
+                vrt_metadata_updater.token_info = {"access_token": "token"}
                 vrt_metadata_updater.get_fragments()
-                
-                # Assert
-                mock_token.assert_called_once()
-                mock_requests.get.assert_called_once()
-                
-    
+
+            # Assert
+            mock_requests.get.assert_called_once()
+
+
     def test_get_token_bad_config(self):
         # Arrange
         mock_config = {
             "environment": {
-                "vrt_request_api": {                
+                "vrt_request_api": {
                     "host": "http://0.0.0.0"
                 },
                 "mediahaven": {
@@ -148,12 +147,12 @@ class TestMetadataUpdater(unittest.TestCase):
         with self.assertRaises(ConnectionError):
             vrt_metadata_updater = VrtMetadataUpdater(mock_config)
             result = vrt_metadata_updater._VrtMetadataUpdater__get_token()
-            
+
     def test_get_token_mediahaven_fail(self):
         # Arrange
         mock_config = {
             "environment": {
-                "vrt_request_api": {                
+                "vrt_request_api": {
                     "host": "http://0.0.0.0"
                 },
                 "mediahaven": {
@@ -170,19 +169,19 @@ class TestMetadataUpdater(unittest.TestCase):
             Response = namedtuple('Response', ['status_code'])
             r = Response(500)
             return r
-        # Act        
+        # Act
         with patch("vrt_metadata_updater.requests") as mock_requests:
             mock_requests.post.side_effect = post
             with self.assertRaises(ConnectionError):
                 vrt_metadata_updater = VrtMetadataUpdater(mock_config)
                 result = vrt_metadata_updater._VrtMetadataUpdater__get_token()
-                
-            
+
+
     def test_get_token_mediahaven_success(self):
         # Arrange
         mock_config = {
             "environment": {
-                "vrt_request_api": {                
+                "vrt_request_api": {
                     "host": "http://0.0.0.0"
                 },
                 "mediahaven": {
@@ -198,17 +197,24 @@ class TestMetadataUpdater(unittest.TestCase):
         def post(url, auth, data) -> tuple:
             Response = namedtuple("Response", ["status_code", "json"])
             def json():
-                return {"access_token": "1234567890qwertyuiop"}
+                return {
+                    "token_type": "Bearer",
+                    "expires_in": 1800,
+                    "access_token": "1234567890qwertyuiop",
+                }
             r = Response(201, json)
             return r
-        # Act        
+        # Act
         with patch("vrt_metadata_updater.requests") as mock_requests:
             mock_requests.post.side_effect = post
             vrt_metadata_updater = VrtMetadataUpdater(mock_config)
             result = vrt_metadata_updater._VrtMetadataUpdater__get_token()
-        
+            result["expires_at"] = int(time.time()) + result["expires_in"]
+            is_token_valid = vrt_metadata_updater._VrtMetadataUpdater__is_token_valid(result)
+
         # Assert
-        assert result == "Bearer 1234567890qwertyuiop"
+        assert is_token_valid == True
+        assert result["access_token"] == "1234567890qwertyuiop"
 
 
 if __name__ == "__main__":
