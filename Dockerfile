@@ -1,4 +1,4 @@
-FROM python:3.7-alpine3.10
+FROM python@sha256:9363cb46e52894a22ba87ebec0845d30f4c27efd6b907705ba9a27192b45e797
 
 RUN apk add --no-cache \
         uwsgi-python3
