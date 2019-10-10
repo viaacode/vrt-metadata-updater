@@ -4,7 +4,7 @@
 #  @Author: Rudolf De Geijter
 #
 #  database.py
-#  
+#
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -21,8 +21,6 @@ Base.query = db_session.query_property()
 def init_db() -> None:
     from models import MediaObject
 
-    # Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
     db_session.commit()
-    

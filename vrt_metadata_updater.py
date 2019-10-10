@@ -17,14 +17,18 @@ from typing import Dict, List
 import requests
 import structlog
 import yaml
-from requests.auth import HTTPBasicAuth
-from requests.exceptions import ConnectionError
+from requests.exceptions import RequestException
+from requests.packages.urllib3.util import Retry
+from requests.adapters import HTTPAdapter
+from requests import Session
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.expression import insert
+from viaa.configuration import ConfigParser
+from viaa.observability import logging
 
 from database import db_session, init_db
 from models import MediaObject
-from viaa.observability import logging
-from viaa.configuration import ConfigParser
+from mediahaven import MediahavenClient
 
 logger = logging.get_logger(config=ConfigParser())
 
@@ -34,87 +38,6 @@ class VrtMetadataUpdater():
         self.token_info = None
 
 
-    def __authenticate(func):
-        """Wrapper that gets a new token if no token is present in the class instance."""
-        @functools.wraps(func)
-        def wrapper_authenticate(self, *args, **kwargs):
-            if not self.__is_token_valid(self.token_info):
-                self.token_info = self.__get_token()
-                self.token_info["expires_at"] = int(time.time()) + self.token_info['expires_in']
-            return func(self, *args, **kwargs)
-
-        return wrapper_authenticate
-
-
-    def __get_token(self) -> str:
-        """Gets an OAuth token that can be used in mediahaven requests to authenticate."""
-        user: str = self.cfg["environment"]["mediahaven"]["username"]
-        password:str = self.cfg["environment"]["mediahaven"]["password"]
-        url: str = self.cfg["environment"]["mediahaven"]["host"] + "/oauth/access_token"
-        payload = {"grant_type": "password"}
-
-        try:
-            r = requests.post(
-                url,
-                auth=HTTPBasicAuth(user.encode("utf-8"), password.encode("utf-8")),
-                data=payload,
-            )
-
-            if r.status_code != 201:
-                raise ConnectionError(f"Failed to get a token. Status: {r.status_code}")
-            token_info =  r.json()
-        except ConnectionError as e:
-            logger.critical(str(e))
-            raise
-        return token_info
-
-
-    def __is_token_valid(self, token_info) -> bool:
-        """Checks if there is a token present and not expired."""
-        if not token_info:
-             return False
-        now = int(time.time())
-
-        return token_info["expires_at"] - now > 60
-
-
-    @__authenticate
-    def get_fragments(self, offset: int = 0) -> dict:
-        """Gets the next 1000 fragments at a time for a configured media type.
-
-        Keyword Arguments:
-            offset {int} -- offset for paging (default: {0})
-
-        Returns:
-            dict -- contains the fragments and the total number of results
-        """
-        url: str = (
-            self.cfg["environment"]["mediahaven"]["host"] + "/media/"
-        )
-
-        headers: dict = {
-            "Authorization": f"Bearer {self.token_info['access_token']}",
-            "Accept": "application/vnd.mediahaven.v2+json"
-            }
-
-        params: dict = {
-            "q": f'%2b(type_viaa:"{self.cfg["media_type"]}")',
-            "startIndex": offset,
-            "nrOfResults": self.cfg["nr_of_results"],
-            }
-        try:
-            response = requests.get(url, headers=headers, params=params)
-
-            if response.status_code != 200:
-                raise ConnectionError(f"Failed to get fragments. Status: {response.status_code}")
-            media_data_list = response.json()
-        except ConnectionError as e:
-            logger.critical(str(e))
-            raise
-
-        return media_data_list
-
-
     def write_media_objects_to_db(self, media_objects: List[MediaObject]) -> None:
         """Add the media_objects to the database if they don't exist, otherwise ignore them.
 
@@ -122,9 +45,12 @@ class VrtMetadataUpdater():
             media_objects {List} -- objects containing the vrt_media_id
         """
         media_objects_as_dict = [media_object.get_dict() for media_object in media_objects]
-        db_session.execute(MediaObject.__table__.insert(prefixes=['OR IGNORE']), media_objects_as_dict)
-        logger.info("wrote items")
-        db_session.commit()
+        try:
+            db_session.execute(MediaObject.__table__.insert(prefixes=['OR IGNORE']), media_objects_as_dict)
+            db_session.commit()
+        except SQLAlchemyError as exception:
+            db_session.rollback()
+            logger.warning("Something went wrong when trying to write media id's to the database.")
 
 
     def process_media_objects(self, list_of_media_objects: List[MediaObject]) -> None:
@@ -136,7 +62,12 @@ class VrtMetadataUpdater():
                 obj.status = 1
             else:
                 obj.status = 2
-            db_session.commit()
+            try:
+                db_session.commit()
+                end = int(time.time())
+            except SQLAlchemyError as exception:
+                db_session.rollback()
+                logger.warning(f"Failed to update the status of {obj.vrt_media_id}.")
             time.sleep(self.cfg["throttle_time"])
 
 
@@ -159,9 +90,17 @@ class VrtMetadataUpdater():
             "creating vrt metadata update request", vrt_media_id=media_id, request=payload
         )
 
-        response = requests.post(
-            self.cfg["environment"]["vrt_request_api"]["host"], data=json.dumps(payload)
-        )
+        retries = Retry(total=10, backoff_factor=0.5, status_forcelist=[ 500, 502, 503, 504, 521], method_whitelist=frozenset(['GET', 'POST']))
+        s = Session()
+        s.mount('http://', HTTPAdapter(max_retries=retries))
+        s.mount('https://', HTTPAdapter(max_retries=retries))
+
+        try:
+            response = s.post(
+                self.cfg["environment"]["vrt_request_api"]["host"], data=json.dumps(payload)
+            )
+        except RequestException as exception:
+            logger.warning(f"Something went wrong trying update metadata: {str(exception)}")
 
         if response.status_code == 200 and response.json()["status"] == "OK":
             logger.info(
@@ -171,11 +110,6 @@ class VrtMetadataUpdater():
             )
             return True
         else:
-            logger.critical(
-                "vrt metadata update request failed",
-                vrt_media_id=media_id,
-                status_code=response.status_code,
-            )
             return False
 
 
@@ -209,13 +143,21 @@ class VrtMetadataUpdater():
 
 
     def start(self) -> None:
+        logger.debug("Starting VRT metadata updater...")
+
+        mediahaven_client = MediahavenClient(self.cfg)
+
         # mediahaven call so we can get total number of results
-        media_data = self.get_fragments()
+        media_data = mediahaven_client.get_fragments()
 
         number_of_media_ids = 0
         total_number_of_results = media_data["TotalNrOfResults"]
+        total_number_of_items_in_db = db_session.query(MediaObject).count()
 
-        if db_session.query(MediaObject).count() == total_number_of_results:
+        logger.debug(f"{total_number_of_results} items found in MediaHaven.")
+        # If all media ids are already in the database, we skip to step 2
+        if total_number_of_items_in_db == total_number_of_results or self.cfg["skip_mediahaven"]:
+            logger.debug("All ids already in database, skipping to step 2.")
             # should skip to step 2
             number_of_media_ids = total_number_of_results
 
@@ -240,19 +182,19 @@ class VrtMetadataUpdater():
             # update amount of items processed
             number_of_media_ids += len(media_objects)
             # get new fragments
-            media_data = self.get_fragments(offset=number_of_media_ids)
+            media_data = mediahaven_client.get_fragments(offset=number_of_media_ids)
 
         # step 2: send each media object with status 0 for update
-        objects: List[MediaObject] = db_session.query(MediaObject).filter(MediaObject.status == 0).all()
+        objects: List[MediaObject] = db_session.query(MediaObject).filter(MediaObject.status != 1).all()
 
-        self.process_media_objects(objects)
+        self.process_media_obwrapcjects(objects)
 
 
 if __name__ == "__main__":
-    logger.info("starting")
+    # Always initialize databse to be sure it exists with the correct tables.
     init_db()
-    DEFAULT_CFG_FILE = "./config.yml"
 
+    DEFAULT_CFG_FILE = "./config.yml"
     # Load config file
     with open(DEFAULT_CFG_FILE, "r") as ymlfile:
         cfg: dict = yaml.load(ymlfile, Loader=yaml.FullLoader)
