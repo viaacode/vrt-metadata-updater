@@ -3,15 +3,15 @@ kind: Job
 metadata:
   name: vrt-metadata-updater
 spec:
-  parallelism: 1    
-  completions: 1    
-  template:         
+  parallelism: 1
+  completions: 1
+  template:
     metadata:
       name: vrt-metadata-updater
     spec:
       containers:
         - image: >-
-            docker-registry.default.svc:5000/vrt-metadata-updater/vrt-metadata-updater@sha256:58e5449784df32de0b8b2c6a8df5f6849d396a46e0002bd89ed9e3174e1c5bd7
+            docker-registry.default.svc:5000/vrt-metadata-updater/vrt-metadata-updater:latest
           imagePullPolicy: Always
           name: vrt-metadata-updater
           resources: {}
@@ -22,7 +22,7 @@ spec:
               name: vrtmetadataupdater-config
               readOnly: true
               subPath: config.yml
-      restartPolicy: Never   
+      restartPolicy: Never
       volumes:
         - configMap:
             defaultMode: 420
