@@ -187,7 +187,7 @@ class VrtMetadataUpdater():
         # step 2: send each media object with status 0 for update
         objects: List[MediaObject] = db_session.query(MediaObject).filter(MediaObject.status != 1).all()
 
-        self.process_media_obwrapcjects(objects)
+        self.process_media_objects(objects)
 
 
 if __name__ == "__main__":
