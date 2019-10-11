@@ -10,7 +10,7 @@ VOLUME /usr/src/app/public
 WORKDIR /usr/src/app
 
 COPY . .
-RUN pip3 install -r requirements.txt
+RUN pip3 install http://do-prd-mvn-01.do.viaa.be:8081/repository/pypi-internal/packages/viaa-chassis/0.0.3/viaa_chassis-0.0.3-py3-none-any.whl && pip3 install -r requirements.txt
 
 # Create database file if it doesn't exist and allow read/write
 RUN touch database.db
